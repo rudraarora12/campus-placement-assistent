@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import PublicRoute from './components/PublicRoute';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+
 import Navbar from './components/Navbar';
-import MainSidebar from './components/MainSidebar';
 import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
-import DashboardView from './components/DashboardView';
 import ProfileView from './components/ProfileView';
-import EligibilityView from './components/EligibilityView';
-import InterviewPrepView from './components/InterviewPrepView';
-import DsaPrepView from './components/DsaPrepView';
-import ResumeAssistantView from './components/ResumeAssistantView';
-import HistoryView from './components/HistoryView';
 import { sendMessage } from './services/aiService';
 import {
   getConversations,
@@ -22,19 +29,18 @@ import {
   generateUniqueId,
 } from './services/chatStorage';
 import { getProfile, saveProfile } from './services/profileStorage';
-import { getProgress, updateCategoryProgress } from './services/progressStorage';
-import { getActivities, addActivity } from './services/activityStorage';
 
-export default function App() {
+function PlacementPlatform({ defaultView = 'chat' }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   // Navigation View State
-  const [currentView, setCurrentView] = useState('dashboard');
-  const [isMainSidebarOpen, setIsMainSidebarOpen] = useState(true);
+  const [currentView, setCurrentView] = useState(defaultView);
   const [isChatSidebarOpen, setIsChatSidebarOpen] = useState(true);
 
   // Stored State
   const [profile, setProfileState] = useState(getProfile());
-  const [progress, setProgressState] = useState(getProgress());
-  const [activities, setActivitiesState] = useState(getActivities());
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveId] = useState(null);
 
@@ -47,6 +53,39 @@ export default function App() {
   // Modals
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isCapabilitiesOpen, setIsCapabilitiesOpen] = useState(false);
+
+  // Sync profile when auth user updates
+  useEffect(() => {
+    if (user) {
+      setProfileState((prev) => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+        course: user.course || prev.course,
+        branch: user.branch || prev.branch,
+        graduationYear: user.graduationYear || prev.graduationYear,
+      }));
+    }
+  }, [user]);
+
+  // Handle internal navigation
+  const handleNavigate = (viewId) => {
+    setCurrentView(viewId);
+    if (viewId === 'chat') {
+      navigate('/assistant');
+    } else if (viewId === 'profile') {
+      navigate('/profile');
+    }
+  };
+
+  // Sync view when path changes
+  useEffect(() => {
+    if (location.pathname === '/profile') {
+      setCurrentView('profile');
+    } else {
+      setCurrentView('chat');
+    }
+  }, [location.pathname]);
 
   // Initialize data on mount
   useEffect(() => {
@@ -73,27 +112,6 @@ export default function App() {
   const handleSaveProfile = (updatedProfile) => {
     saveProfile(updatedProfile);
     setProfileState(updatedProfile);
-    const updatedActs = addActivity({
-      title: 'Updated Student Profile',
-      description: `CGPA set to ${updatedProfile.cgpa || 'N/A'}, batch ${updatedProfile.graduationYear || '2027'}`,
-      type: 'profile',
-    });
-    setActivitiesState(updatedActs);
-  };
-
-  // Update Category Progress
-  const handleUpdateCategoryProgress = (categoryId, delta) => {
-    const updated = updateCategoryProgress(categoryId, delta);
-    setProgressState({ ...updated });
-    const category = updated.categories.find((c) => c.id === categoryId);
-    if (category) {
-      const updatedActs = addActivity({
-        title: `Updated ${category.name} Progress`,
-        description: `${category.completed}/${category.total} topics completed`,
-        type: 'progress',
-      });
-      setActivitiesState(updatedActs);
-    }
   };
 
   // Start a new chat
@@ -106,14 +124,7 @@ export default function App() {
     setInput('');
     setError(null);
     setLastFailedMessage(null);
-    setCurrentView('chat');
-
-    const updatedActs = addActivity({
-      title: 'Started a New AI Conversation',
-      description: 'Initialized new placement query session',
-      type: 'chat',
-    });
-    setActivitiesState(updatedActs);
+    handleNavigate('chat');
   };
 
   // Select an existing conversation
@@ -122,7 +133,7 @@ export default function App() {
     setActiveConversationId(convId);
     setError(null);
     setLastFailedMessage(null);
-    setCurrentView('chat');
+    handleNavigate('chat');
   };
 
   // Delete a conversation
@@ -171,7 +182,10 @@ export default function App() {
       timestamp,
     };
 
-    const isFirstMessage = !currentConv.messages || currentConv.messages.length === 0 || currentConv.title === 'New Chat';
+    const isFirstMessage =
+      !currentConv.messages ||
+      currentConv.messages.length === 0 ||
+      currentConv.title === 'New Chat';
     const newTitle = isFirstMessage ? generateChatTitle(messageText) : currentConv.title;
 
     // Immediately update conversation in localStorage & state
@@ -209,14 +223,6 @@ export default function App() {
 
       setConversations(updatedConversationsWithAI);
       setLastFailedMessage(null);
-
-      // Log activity
-      const updatedActs = addActivity({
-        title: `AI Question: "${newTitle}"`,
-        description: `Verified answer retrieved from placement knowledge base`,
-        type: 'chat',
-      });
-      setActivitiesState(updatedActs);
     } catch (err) {
       console.error('Failed to send message:', err);
       setError({
@@ -226,12 +232,6 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Launch AI with specific prompt from any view
-  const handleAskAIWithPrompt = (promptText) => {
-    setCurrentView('chat');
-    handleSendMessage(promptText);
   };
 
   const handleRetry = () => {
@@ -246,158 +246,42 @@ export default function App() {
         profile={profile}
         onOpenAbout={() => setIsAboutOpen(true)}
         onOpenCapabilities={() => setIsCapabilitiesOpen(true)}
-        onToggleSidebar={() => setIsMainSidebarOpen((prev) => !prev)}
-        onNavigate={setCurrentView}
+        onToggleSidebar={() => setIsChatSidebarOpen((prev) => !prev)}
+        onNavigate={handleNavigate}
       />
 
-      <div className="platform-layout">
-        {/* Main Application Sidebar */}
-        <MainSidebar
-          currentView={currentView}
-          onNavigate={setCurrentView}
-          isOpen={isMainSidebarOpen}
-          onClose={() => setIsMainSidebarOpen(false)}
-        />
-
-        {/* View Router Area */}
-        <div className="platform-view-area">
-          {currentView === 'dashboard' && (
-            <DashboardView
-              profile={profile}
-              conversations={conversations}
-              progress={progress}
-              activities={activities}
-              onOpenChat={() => setCurrentView('chat')}
-              onOpenChatWithConversation={(id) => handleSelectConversation(id)}
-              onAskAI={handleAskAIWithPrompt}
-              onNavigate={setCurrentView}
-              onUpdateCategoryProgress={handleUpdateCategoryProgress}
-            />
-          )}
-
-          {currentView === 'chat' && (
-            <div className="main-layout chat-layout-inner">
-              <Sidebar
-                conversations={conversations}
-                activeConversationId={activeConversationId}
-                onSelectConversation={handleSelectConversation}
-                onNewChat={handleNewChat}
-                onDeleteConversation={handleDeleteConversation}
-                isOpen={isChatSidebarOpen}
-                onCloseSidebar={() => setIsChatSidebarOpen(false)}
-              />
-
-              <ChatWindow
-                messages={messages}
-                input={input}
-                setInput={setInput}
-                onSendMessage={handleSendMessage}
-                isLoading={isLoading}
-                error={error}
-                onRetry={lastFailedMessage ? handleRetry : null}
-              />
-            </div>
-          )}
-
-          {currentView === 'history' && (
-            <HistoryView
-              conversations={conversations}
-              onOpenConversation={(id) => handleSelectConversation(id)}
-              onNewChat={handleNewChat}
-              onDeleteConversation={handleDeleteConversation}
-            />
-          )}
-
-          {currentView === 'eligibility' && (
-            <EligibilityView
-              profile={profile}
-              onAskAI={handleAskAIWithPrompt}
-            />
-          )}
-
-          {currentView === 'interview' && (
-            <InterviewPrepView
-              onAskAI={handleAskAIWithPrompt}
-            />
-          )}
-
-          {currentView === 'dsa' && (
-            <DsaPrepView
-              onAskAI={handleAskAIWithPrompt}
-            />
-          )}
-
-          {currentView === 'resume' && (
-            <ResumeAssistantView
-              onAskAI={handleAskAIWithPrompt}
-            />
-          )}
-
-          {currentView === 'profile' && (
+      <div className="main-layout chat-layout-inner" style={{ flex: 1, overflow: 'hidden' }}>
+        {currentView === 'profile' ? (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
             <ProfileView
               profile={profile}
               onSaveProfile={handleSaveProfile}
+              onBackToChat={() => handleNavigate('chat')}
             />
-          )}
+          </div>
+        ) : (
+          <>
+            <Sidebar
+              conversations={conversations}
+              activeConversationId={activeConversationId}
+              onSelectConversation={handleSelectConversation}
+              onNewChat={handleNewChat}
+              onDeleteConversation={handleDeleteConversation}
+              isOpen={isChatSidebarOpen}
+              onCloseSidebar={() => setIsChatSidebarOpen(false)}
+            />
 
-          {currentView === 'settings' && (
-            <div className="view-container">
-              <div className="view-header">
-                <h1 className="view-title">Settings & Platform Status</h1>
-                <p className="view-subtitle">Manage browser storage and inspect connected Foundry Agent details.</p>
-              </div>
-              <div className="settings-cards-grid">
-                <div className="settings-card">
-                  <h3 className="settings-card-title">Microsoft Foundry Agent</h3>
-                  <div className="settings-key-val">
-                    <span>Agent Name:</span>
-                    <code>Campus-Placement-Assistant</code>
-                  </div>
-                  <div className="settings-key-val">
-                    <span>Agent Version:</span>
-                    <code>23</code>
-                  </div>
-                  <div className="settings-key-val">
-                    <span>Model:</span>
-                    <code>gpt-4.1-mini</code>
-                  </div>
-                  <div className="settings-key-val">
-                    <span>Knowledge Source:</span>
-                    <code>File Search (Official PDF Documents)</code>
-                  </div>
-                </div>
-
-                <div className="settings-card">
-                  <h3 className="settings-card-title">Browser LocalStorage</h3>
-                  <div className="settings-key-val">
-                    <span>Saved Conversations:</span>
-                    <strong>{conversations.length}</strong>
-                  </div>
-                  <div className="settings-key-val">
-                    <span>Student Profile:</span>
-                    <strong>{profile.name || 'Set'}</strong>
-                  </div>
-                  <button
-                    type="button"
-                    className="danger-btn"
-                    onClick={() => {
-                      if (window.confirm('Clear all conversation history stored in localStorage?')) {
-                        localStorage.removeItem('campus_placement_chat_history');
-                        localStorage.removeItem('campus_placement_active_chat');
-                        const fresh = createConversation('New Chat');
-                        setConversations([fresh]);
-                        setActiveId(fresh.id);
-                        alert('Chat history cleared.');
-                      }
-                    }}
-                  >
-                    Clear Chat History
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+            <ChatWindow
+              messages={messages}
+              input={input}
+              setInput={setInput}
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+              error={error}
+              onRetry={lastFailedMessage ? handleRetry : null}
+            />
+          </>
+        )}
       </div>
 
       {/* About Modal */}
@@ -427,8 +311,8 @@ export default function App() {
                 <span className="model-tag">gpt-4.1-mini</span> with built-in File Search knowledge.
               </p>
               <p>
-                <strong>Security & Privacy:</strong> All conversation histories and student profile
-                data are stored safely and privately in your browser's local storage.
+                <strong>Security & Privacy:</strong> All conversation histories and student prep
+                records are stored safely in your browser session.
               </p>
             </div>
           </div>
@@ -478,5 +362,56 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Auth Routes */}
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/signup"
+            element={
+              <PublicRoute>
+                <SignupPage />
+              </PublicRoute>
+            }
+          />
+
+          {/* Protected Main Routes */}
+          <Route
+            path="/assistant"
+            element={
+              <ProtectedRoute>
+                <PlacementPlatform defaultView="chat" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <PlacementPlatform defaultView="profile" />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Redirect /dashboard and root to /assistant */}
+          <Route path="/dashboard" element={<Navigate to="/assistant" replace />} />
+          <Route path="/" element={<Navigate to="/assistant" replace />} />
+          <Route path="*" element={<Navigate to="/assistant" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

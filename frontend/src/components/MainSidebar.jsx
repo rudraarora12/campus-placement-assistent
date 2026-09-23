@@ -4,7 +4,9 @@ import {
   Bot,
   GraduationCap,
   Sparkles,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function MainSidebar({
   currentView,
@@ -12,10 +14,18 @@ export default function MainSidebar({
   isOpen,
   onClose,
 }) {
+  const { logout, user } = useAuth();
+
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'chat', label: 'AI Assistant', icon: Bot, badge: 'Foundry' },
   ];
+
+  const handleLogout = async () => {
+    if (window.confirm('Are you sure you want to sign out?')) {
+      await logout();
+    }
+  };
 
   return (
     <>
@@ -72,6 +82,29 @@ export default function MainSidebar({
             })}
           </ul>
         </nav>
+
+        {/* Sidebar Footer with Logged In User info & Logout */}
+        <div className="main-sidebar-footer">
+          <div className="sidebar-user-info">
+            <div className="sidebar-user-avatar">
+              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+            </div>
+            <div className="sidebar-user-meta">
+              <span className="sidebar-user-name">{user?.name || 'Student'}</span>
+              <span className="sidebar-user-email">{user?.email || ''}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="sidebar-logout-btn"
+            onClick={handleLogout}
+            title="Sign out"
+            aria-label="Sign out"
+          >
+            <LogOut size={16} />
+            <span>Sign Out</span>
+          </button>
+        </div>
       </aside>
     </>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Menu, User, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar({
   profile,
@@ -8,6 +9,8 @@ export default function Navbar({
   onToggleSidebar,
   onNavigate,
 }) {
+  const { logout } = useAuth();
+
   const initials = profile?.name
     ? profile.name
         .split(' ')
@@ -17,6 +20,12 @@ export default function Navbar({
         .substring(0, 2)
     : 'CP';
 
+  const handleLogout = async () => {
+    if (window.confirm('Are you sure you want to sign out?')) {
+      await logout();
+    }
+  };
+
   return (
     <header className="navbar">
       <div className="navbar-left">
@@ -24,13 +33,13 @@ export default function Navbar({
           type="button"
           className="sidebar-toggle-btn"
           onClick={onToggleSidebar}
-          title="Toggle Navigation Menu"
-          aria-label="Toggle navigation menu"
+          title="Toggle Chat Sidebar"
+          aria-label="Toggle chat sidebar"
         >
           <Menu className="toggle-icon" />
         </button>
 
-        <div className="logo-container" onClick={() => onNavigate('dashboard')} style={{ cursor: 'pointer' }}>
+        <div className="logo-container" onClick={() => onNavigate('chat')} style={{ cursor: 'pointer' }}>
           <div className="logo-icon" aria-hidden="true">
             CP
           </div>
@@ -76,6 +85,18 @@ export default function Navbar({
             <span className="student-pill-branch">{profile?.branch ? profile.branch.split(' ')[0] : 'CSE'}</span>
           </div>
         </div>
+
+        {/* Logout Button */}
+        <button
+          type="button"
+          className="nav-logout-btn"
+          onClick={handleLogout}
+          title="Sign out of Campus Placement Assistant"
+          aria-label="Sign out"
+        >
+          <LogOut size={16} />
+          <span className="logout-label">Sign Out</span>
+        </button>
       </div>
     </header>
   );

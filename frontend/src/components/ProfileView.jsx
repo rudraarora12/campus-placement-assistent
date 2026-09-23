@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { User, Save, CheckCircle, GraduationCap, Award, BookOpen, AlertCircle } from 'lucide-react';
+import { User, Save, CheckCircle, ArrowLeft, AlertCircle } from 'lucide-react';
 
-export default function ProfileView({ profile, onSaveProfile }) {
+export default function ProfileView({ profile, onSaveProfile, onBackToChat }) {
   const [formData, setFormData] = useState(profile);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -19,16 +19,29 @@ export default function ProfileView({ profile, onSaveProfile }) {
 
   return (
     <div className="view-container">
-      <div className="view-header">
-        <div className="view-icon-badge">
-          <User className="view-header-icon" />
+      <div className="view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div className="view-icon-badge">
+            <User className="view-header-icon" />
+          </div>
+          <div>
+            <h1 className="view-title">Student Profile</h1>
+            <p className="view-subtitle">
+              Manage your academic details for tailored placement eligibility checks with the AI Assistant.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="view-title">Student Profile</h1>
-          <p className="view-subtitle">
-            Manage your academic details. These are stored locally in your browser and used to tailor placement eligibility checks.
-          </p>
-        </div>
+        {onBackToChat && (
+          <button
+            type="button"
+            className="nav-button"
+            onClick={onBackToChat}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' }}
+          >
+            <ArrowLeft size={16} />
+            <span>Back to Chat</span>
+          </button>
+        )}
       </div>
 
       <div className="profile-grid">
@@ -73,7 +86,7 @@ export default function ProfileView({ profile, onSaveProfile }) {
                   className="form-input"
                   value={formData.course || ''}
                   onChange={handleChange}
-                  placeholder="e.g. B.E."
+                  placeholder="e.g. B.Tech"
                   required
                 />
               </div>
@@ -158,7 +171,7 @@ export default function ProfileView({ profile, onSaveProfile }) {
             <div className="form-actions">
               <button type="submit" className="save-btn">
                 <Save className="btn-icon" />
-                <span>Save Profile to LocalStorage</span>
+                <span>Save Profile</span>
               </button>
               {savedSuccess && (
                 <div className="save-success-msg">
@@ -198,11 +211,11 @@ export default function ProfileView({ profile, onSaveProfile }) {
             </div>
             <div className="summary-item">
               <span className="summary-label">CGPA:</span>
-              <span className="summary-val highlight-val">{formData.cgpa} / 10.0</span>
+              <span className="summary-val highlight-val">{formData.cgpa || '8.0'} / 10.0</span>
             </div>
             <div className="summary-item">
               <span className="summary-label">Backlogs:</span>
-              <span className="summary-val">{formData.backlogs}</span>
+              <span className="summary-val">{formData.backlogs || '0'}</span>
             </div>
           </div>
         </div>
