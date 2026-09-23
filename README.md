@@ -17,7 +17,7 @@ An AI-powered campus placement assistant designed to help students with placemen
 | :--- | :--- | :--- |
 | **Rudra** | Lead AI & Cloud Integration | Overall architecture, Microsoft Azure Foundry integration, Agent & File Search RAG setup, frontend/backend cloud integration. |
 | **Pratham** | ML / Model Developer | Model training, dataset preparation, model evaluation, and ML component integration. |
-| **Agrim** | Frontend & Dashboard Developer | React application structure, placement preparation views, UI design system, and component library. |
+| **Agrim** | Frontend Developer | React application structure, placement preparation views, UI design system, and component library. |
 | **Natasha** | Authentication & User Flow | Firebase Authentication integration, login/signup interfaces, route guards, and user auth lifecycle. |
 | **Kamaksha** | Chat, Storage & Testing | Chat window interface, LocalStorage conversation persistence, activity tracking, and automated testing suite. |
 
